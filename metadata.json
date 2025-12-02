@@ -1,0 +1,5 @@
+{
+  "name": "HR System - Assiut Engineers Syndicate",
+  "description": "نظام إدارة الموارد البشرية لنقابة المهندسين بأسيوط. يشمل الحضور والانصراف، المرتبات، الضرائب، والتأمينات طبقاً لقانون العمل المصري.",
+  "requestFramePermissions": []
+}

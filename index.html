@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HR System - Assiut Engineers Syndicate</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        --primary-green: #059669;
+        --secondary-green: #10b981;
+      }
+
+      body {
+        font-family: 'Cairo', sans-serif, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f0fdf4;
+        background-image: 
+          radial-gradient(at 0% 0%, hsla(152,100%,96%,1) 0, transparent 50%), 
+          radial-gradient(at 50% 0%, hsla(140,100%,94%,1) 0, transparent 50%), 
+          radial-gradient(at 100% 0%, hsla(160,100%,96%,1) 0, transparent 50%);
+        background-attachment: fixed;
+        overflow-x: hidden;
+        direction: rtl;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Professional Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(167, 243, 208, 0.3); 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #34d399; 
+        border-radius: 20px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #059669; 
+        border: 0;
+      }
+
+      /* --- Animations --- */
+      
+      /* Fade In */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+
+      /* Slide Up */
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+      /* Slide In Right (Sidebar) */
+      @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(30px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+      .animate-slide-in-right { animation: slideInRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+      /* Scale In (Modals) */
+      @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .animate-scale-in { animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+      /* Float Animation */
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+      .animate-float { animation: float 4s ease-in-out infinite; }
+
+      /* Pulse Soft */
+      @keyframes pulse-soft {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+      }
+      .animate-pulse-soft { animation: pulse-soft 2s infinite; }
+
+      /* Staggered Delays */
+      .delay-100 { animation-delay: 100ms; }
+      .delay-200 { animation-delay: 200ms; }
+      .delay-300 { animation-delay: 300ms; }
+      .delay-400 { animation-delay: 400ms; }
+      .delay-500 { animation-delay: 500ms; }
+
+      /* --- Utilities --- */
+
+      /* Glassmorphism */
+      .glass {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+      }
+
+      .glass-dark {
+        background: rgba(6, 78, 59, 0.85); /* Emerald 900 */
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* Hover Effects */
+      .hover-lift {
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+      }
+      .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn-interactive {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .btn-interactive:active {
+        transform: scale(0.97);
+      }
+
+      /* Inputs */
+      input, select, textarea {
+        transition: all 0.3s ease;
+      }
+      input:focus, select:focus, textarea:focus {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -10px rgba(16, 185, 129, 0.2);
+        border-color: #34d399;
+      }
+
+      /* Print Styles */
+      @media print {
+        body {
+          background: white;
+          background-image: none;
+        }
+        .no-print { display: none !important; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "express": "https://aistudiocdn.com/express@^5.2.1",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "body-parser": "https://aistudiocdn.com/body-parser@^2.2.1",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "fs": "https://aistudiocdn.com/fs@^0.0.1-security"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
