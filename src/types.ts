@@ -26,9 +26,26 @@ export interface EmployeeAllowances {
   minSocialPackage: number;       // بدل الحد الادنى للحزمة الاجتماعية
   laborGrantAllowance: number;    // بدل منحة العمال
   additionalSocialAllowance: number; // بدل علاوة اجتماعية اضافية
+  
+  // Added Manual Additional Incentive
+  additionalIncentive: number;    // الحافز الإضافي (يدوي)
+  masterIncentive: number;        // بدل حافز الماجستير (جديد)
 }
 
-export type EducationLevel = 'none' | 'diploma' | 'master' | 'phd';
+export interface CustomAllowance {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface NonPensionableAllowance {
+  id: string;
+  name: string;
+  value: number;
+}
+
+// "none" acts as Bachelor/Licentiate/General Higher Education for calculation purposes
+export type EducationLevel = 'none' | 'diploma' | 'master' | 'phd' | 'institute_high' | 'institute_mid' | 'technical_diploma' | 'prep';
 
 export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
 export type MilitaryStatus = 'completed' | 'postponed' | 'exempt' | 'none';
@@ -44,26 +61,55 @@ export interface EmployeeDocument {
   uploadDate: string;
 }
 
+export interface SalaryIncrease {
+  id: string;
+  name: string; // اسم العلاوة (دورية، تشجيعية، ترقية، استثنائية...)
+  type: 'percentage' | 'fixed'; // نوع العلاوة (نسبة مئوية / قيمة مقطوعة)
+  value: number; // القيمة (10% أو 100 جنيه)
+  amountAdded: number; // القيمة النقدية المضافة فعلياً
+  previousBasic: number; // الأساسي قبل الزيادة
+  newBasic: number; // الأساسي بعد الزيادة
+  date: string; // تاريخ الإقرار
+  notes?: string;
+}
+
 export interface Employee {
   id: string;
   name: string;
   nationalId: string;
+  documentNumber?: string; // رقم المستند (للمجموعات)
   position: string;
   department: string;
   grade?: string; // الدرجة الوظيفية
-  educationLevel: EducationLevel; // المؤهل العلمي
+  
+  // Education Details
+  educationLevel: EducationLevel; // Base level for calculations
+  university?: string; // e.g., جامعة أسيوط
+  faculty?: string; // e.g., كلية الهندسة
+  graduationYear?: string; // e.g., 2015
+
   hasExperience: boolean; // هل لديه خبرة سابقة (لحساب علاوة الخبرة 10%)
   isSpecialNeeds?: boolean; // من ذوي الاحتياجات الخاصة (50% إعفاء ضريبي إضافي)
+  isPensionSubject?: boolean; // خاضع للمعاش (يخصم منه تأمينات وتتحمل النقابة حصة صاحب العمل)
   employmentCategory: EmploymentCategory; // تصنيف التعيين (نقابة/نادي - مثبت/متعاقد)
-  basicSalary: number; // الراتب الأساسي التأميني
+  
+  initialBasicSalary: number; // الراتب الأساسي الأولي (عند التعيين)
+  basicSalary: number; // الراتب الأساسي التأميني الحالي (المطبق فعلياً)
   variableSalary: number; // المتغير والحوافز (أخرى)
   
+  salaryHistory?: SalaryIncrease[]; // سجل تدرج المرتب الأساسي
+
   manualFellowshipValue?: number; // قيمة صندوق الزمالة (يدوي)
   manualSyndicateIncentive?: number; // حافز النقابة (يدوي)
   manualSpecialRaise2015?: number; // علاوة 2015 (يدوي)
+  manualLaborGrant?: number; // منحة العمال (يدوي)
 
   allowances: EmployeeAllowances; // البدلات
+  customAllowances?: CustomAllowance[]; // بدلات إضافية مخصصة
+  nonPensionableAllowances?: NonPensionableAllowance[]; // بدلات غير خاضعة للتأمينات (جديد)
+  
   joinDate: string;
+  retirementDate?: string; // تاريخ بلوغ سن المعاش
   phone: string;
   
   // New Fields
@@ -76,6 +122,15 @@ export interface Employee {
   bankName?: string; // اسم البنك للتحويل
   bankAccountNumber?: string; // رقم الحساب البنكي - Added
   documents?: EmployeeDocument[]; // أرشيف المستندات
+  lastModifiedDate?: string; // تاريخ آخر تعديل
+  
+  vodafoneDeduction?: number; // خصم فودافون (اشتراك شهري) - Added
+
+  // Tax settings
+  taxCalculationMethod: 'auto' | 'manual'; // طريقة حساب الضريبة
+  manualTaxRate?: number; // نسبة الضريبة اليدوية (5-25)
+
+  trainingCourses?: string; // الدورات التدريبية
 }
 
 export interface EmployeeGrade {
@@ -110,10 +165,12 @@ export interface LeaveRequest {
 export interface Loan {
   id: string;
   employeeId: string;
+  type: 'loan' | 'bank'; // تحديد نوع المديونية (سلفة أو قسط بنك)
   totalAmount: number; // قيمة السلفة
   remainingAmount: number; // المتبقي
   monthlyInstallment: number; // القسط الشهري
   startDate: string;
+  endDate?: string; // تاريخ انتهاء السلفة
   status: 'active' | 'completed';
 }
 
@@ -153,6 +210,7 @@ export interface BonusRecord {
   stampAmount: number;
   netAmount: number;
 
+  docNumber?: string; // رقم المستند الخاص بالمنحة/المكافأة
   date: string; // تاريخ الاستحقاق
   details?: string; // تفاصيل (مثلا عدد الساعات في حالة الاضافي)
 }
@@ -161,9 +219,11 @@ export interface ExternalWorkerRecord {
   id: string;
   name: string;
   nationalId: string;
+  documentNumber?: string; // Added field for Document Number
   jobType: string;
   amount: number;
   date: string;
+  // Financial details
   taxRate?: number;
   taxAmount?: number;
   stampAmount?: number;
@@ -207,22 +267,39 @@ export interface PayrollSlip {
   incentives: number; // Now includes Bonuses/Grants
   penalties: number;
   loanDeduction: number; // خصم السلفة
+  bankInstallment: number; // خصم قسط البنك (جديد)
   taxSettlementDeduction: number; // خصم التسوية الضريبية
   netSalary: number;
+  
+  vodafoneDeduction: number; // Added to slip
+  nonPensionableTotal: number; // إجمالي البدلات غير الخاضعة (جديد)
 }
 
+// Added missing TaxBracket interface to resolve compilation errors
 export interface TaxBracket {
   limit: number;
   rate: number;
 }
 
-// User System Types
+// Added missing UserRole type to resolve compilation errors
 export type UserRole = 'admin' | 'editor';
 
+// Added missing User interface to resolve compilation errors
+export interface User {
+  id: string;
+  username: string;
+  password: string; // In a real app, this should be hashed
+  name: string;
+  role: UserRole;
+  permissions?: Page[];
+}
+
+// Added missing Page enum to resolve compilation errors
 export enum Page {
   DASHBOARD = 'DASHBOARD',
   EMPLOYEES = 'EMPLOYEES',
   STATUS_STATEMENT = 'STATUS_STATEMENT',
+  SALARY_PROGRESSION = 'SALARY_PROGRESSION',
   ATTENDANCE = 'ATTENDANCE',
   PAYROLL = 'PAYROLL',
   LEAVES = 'LEAVES', 
@@ -232,16 +309,7 @@ export enum Page {
   TAX_SETTLEMENT = 'TAX_SETTLEMENT',
   EXTERNAL_WORKERS = 'EXTERNAL_WORKERS',
   REPORTS = 'REPORTS',
+  AI_ADVISOR = 'AI_ADVISOR',
   USERS = 'USERS',
-  SETTINGS = 'SETTINGS',
-  AI_ADVISOR = 'AI_ADVISOR'
-}
-
-export interface User {
-  id: string;
-  username: string;
-  password: string; // In a real app, this should be hashed
-  name: string;
-  role: UserRole;
-  permissions?: Page[]; // Optional for Admins (they have full access), required logic for Editors
+  SETTINGS = 'SETTINGS'
 }

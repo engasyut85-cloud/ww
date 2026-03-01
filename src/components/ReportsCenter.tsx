@@ -11,7 +11,7 @@ interface ReportsCenterProps {
 
 export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves, loans }) => {
   
-  const printReport = (title: string, columns: string[], rows: string[][]) => {
+  const printReport = (title: string, columns: string[], rows: string[][], footerRow?: string[]) => {
       const printWindow = window.open('', '_blank');
       if (!printWindow) return;
 
@@ -20,20 +20,33 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
       const tableRows = rows.map((row, index) => `
         <tr>
             <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">${index + 1}</td>
-            ${row.map(cell => `<td style="padding: 8px; border: 1px solid #cbd5e1;">${cell}</td>`).join('')}
+            ${row.map(cell => `<td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">${cell}</td>`).join('')}
         </tr>
       `).join('');
 
-      const tableHeaders = columns.map(col => `<th style="padding: 10px; border: 1px solid #94a3b8; background-color: #ecfdf5; color: #064e3b;">${col}</th>`).join('');
+      const tableHeaders = columns.map(col => `<th style="padding: 10px; border: 1px solid #94a3b8; background-color: #ecfdf5; color: #064e3b; text-align: center;">${col}</th>`).join('');
+
+      // إنشاء سطر الإجماليات إذا وجد
+      let footerHtml = '';
+      if (footerRow) {
+          footerHtml = `
+            <tfoot style="background-color: #064e3b; color: white; font-weight: 900; font-size: 14px;">
+                <tr>
+                    <td colspan="2" style="padding: 12px; border: 1px solid #000; text-align: left; padding-left: 20px;">الإجمالي العام</td>
+                    ${footerRow.map(cell => `<td style="padding: 12px; border: 1px solid #000; text-align: center;">${cell}</td>`).join('')}
+                </tr>
+            </tfoot>
+          `;
+      }
 
       const content = `
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
         <head>
             <title>${title}</title>
-            <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
             <style>
-                body { font-family: 'Cairo', sans-serif; padding: 40px; background: white; }
+                body { font-family: 'Cairo', sans-serif; padding: 40px; background: white; -webkit-print-color-adjust: exact; }
                 .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #064e3b; padding-bottom: 20px; margin-bottom: 30px; }
                 .header-text { text-align: center; flex: 1; }
                 .header-text h2 { font-size: 24px; color: #064e3b; margin: 0; }
@@ -41,11 +54,11 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
                 
                 table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
                 th { font-weight: 800; }
-                td { color: #1e293b; }
+                td { color: #1e293b; border: 1px solid #94a3b8; }
                 
-                .footer { margin-top: 50px; display: flex; justify-content: space-between; text-align: center; font-size: 14px; }
-                .footer-box p { margin-bottom: 40px; font-weight: bold; }
-                .footer-box .line { border-bottom: 1px dotted #000; width: 150px; margin: 0 auto; }
+                .footer-box-sign { margin-top: 50px; display: flex; justify-content: space-between; text-align: center; font-size: 14px; }
+                .footer-box-sign div p { margin-bottom: 40px; font-weight: bold; }
+                .line { border-bottom: 1px dotted #000; width: 150px; margin: 0 auto; }
                 
                 @media print {
                     button { display: none; }
@@ -75,14 +88,15 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
                 <tbody>
                     ${tableRows}
                 </tbody>
+                ${footerHtml}
             </table>
 
-            <div class="footer">
-                <div class="footer-box">
+            <div class="footer-box-sign">
+                <div>
                     <p>إعداد / الموارد البشرية</p>
                     <div class="line"></div>
                 </div>
-                <div class="footer-box">
+                <div>
                     <p>يعتمد / المدير العام</p>
                     <div class="line"></div>
                 </div>
@@ -95,14 +109,14 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
       printWindow.document.close();
   };
 
-  // Report 1: All Employees
+  // التقرير 1: بيان قوة العمل
   const handlePrintEmployees = () => {
       const cols = ['اسم الموظف', 'الرقم القومي', 'القسم', 'الوظيفة', 'تاريخ التعيين'];
       const rows = employees.map(e => [e.name, e.nationalId, e.department, e.position, e.joinDate]);
       printReport('بيان بجميع العاملين بالنقابة', cols, rows);
   };
 
-  // Report 2: Monthly Leaves
+  // التقرير 2: الإجازات الشهرية
   const handlePrintLeaves = () => {
       const currentMonth = new Date().getMonth() + 1;
       const currentLeaves = leaves.filter(l => {
@@ -119,15 +133,42 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
       printReport(`تقرير الإجازات والمأموريات لشهر ${currentMonth}`, cols, rows);
   };
 
-  // Report 3: Loans
+  // التقرير 3: موقف السلف (مع الإجماليات)
   const handlePrintLoans = () => {
       const activeLoans = loans.filter(l => l.status === 'active');
-      const cols = ['اسم الموظف', 'قيمة السلفة', 'المبلغ المتبقي', 'القسط الشهري', 'تاريخ البدء'];
+      
+      // حساب الإجماليات
+      let totalLoanSum = 0;
+      let totalRemainingSum = 0;
+      let totalInstallmentSum = 0;
+
+      const cols = ['اسم الموظف', 'إجمالي قيمة السلفة', 'المبلغ المتبقي', 'القسط الشهري', 'تاريخ البدء'];
+      
       const rows = activeLoans.map(l => {
           const emp = employees.find(e => e.id === l.employeeId);
-          return [emp?.name || '-', l.totalAmount.toLocaleString(), l.remainingAmount.toLocaleString(), l.monthlyInstallment.toLocaleString(), l.startDate];
+          
+          totalLoanSum += l.totalAmount;
+          totalRemainingSum += l.remainingAmount;
+          totalInstallmentSum += l.monthlyInstallment;
+
+          return [
+              emp?.name || '-', 
+              l.totalAmount.toLocaleString(), 
+              l.remainingAmount.toLocaleString(), 
+              l.monthlyInstallment.toLocaleString(), 
+              l.startDate
+          ];
       });
-      printReport('بيان السلف المالية المستحقة على العاملين', cols, rows);
+
+      // إنشاء سطر الإجماليات (يتجاهل المسلسل والاسم عبر colspan ويملأ باقي الأعمدة)
+      const footerRow = [
+          totalLoanSum.toLocaleString(),
+          totalRemainingSum.toLocaleString(),
+          totalInstallmentSum.toLocaleString(),
+          '-' // عمود تاريخ البدء في سطر الإجمالي
+      ];
+
+      printReport('بيان السلف المالية المستحقة على العاملين', cols, rows, footerRow);
   };
 
   return (
@@ -139,7 +180,6 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           
-          {/* Card 1 */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 flex flex-col items-center text-center hover:shadow-md transition-all group">
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <Users size={32} />
@@ -152,7 +192,6 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
               </button>
           </div>
 
-          {/* Card 2 */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 flex flex-col items-center text-center hover:shadow-md transition-all group">
               <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-amber-600 group-hover:text-white transition-colors">
                   <Calendar size={32} />
@@ -165,13 +204,12 @@ export const ReportsCenter: React.FC<ReportsCenterProps> = ({ employees, leaves,
               </button>
           </div>
 
-          {/* Card 3 */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 flex flex-col items-center text-center hover:shadow-md transition-all group">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-emerald-100 flex flex-col items-center text-center hover:shadow-md transition-all group shadow-emerald-900/10">
               <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-600 group-hover:text-white transition-colors">
                   <Wallet size={32} />
               </div>
               <h3 className="font-bold text-lg text-emerald-900 mb-2">موقف السلف</h3>
-              <p className="text-sm text-slate-500 mb-6">تقرير مالي يوضح أرصدة السلف المتبقية على الموظفين.</p>
+              <p className="text-sm text-slate-500 mb-6">تقرير مالي يوضح أرصدة السلف المتبقية على الموظفين مع الإجماليات.</p>
               <button onClick={handlePrintLoans} className="w-full py-2 bg-white border border-red-200 text-red-700 font-bold rounded-lg hover:bg-red-50 flex items-center justify-center gap-2">
                   <Printer size={18} />
                   طباعة الكشف

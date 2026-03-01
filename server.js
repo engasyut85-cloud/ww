@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
@@ -12,6 +13,7 @@ const app = express();
 const PORT = 3001;
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'database.json');
+const BACKUP_FILE = path.join(DATA_DIR, 'database.backup.json');
 
 // Middleware
 app.use(cors());
@@ -41,6 +43,16 @@ app.get('/api/data', (req, res) => {
 app.post('/api/save', (req, res) => {
     try {
         const newData = req.body;
+        
+        // Create a safety backup before overwriting
+        if (fs.existsSync(DB_FILE)) {
+            try {
+                fs.copyFileSync(DB_FILE, BACKUP_FILE);
+            } catch (backupErr) {
+                console.warn('Failed to create backup:', backupErr);
+            }
+        }
+
         fs.writeFileSync(DB_FILE, JSON.stringify(newData, null, 2));
         res.json({ success: true, message: 'Data saved successfully to local file' });
     } catch (error) {

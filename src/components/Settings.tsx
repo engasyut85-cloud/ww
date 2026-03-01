@@ -1,7 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { Save, Upload, Download, RefreshCw, Plus, Trash2, Building, Key, Shield } from 'lucide-react';
+import { Save, Upload, Download, RefreshCw, Plus, Trash2, Building, Key, Shield, FileSpreadsheet } from 'lucide-react';
 import { User } from '../types';
+import { exportToExcel, parseExcel } from '../utils/excelUtils';
+import { calculateSalary } from '../utils/payrollLogic';
 
 interface SettingsProps {
   departments: string[];
@@ -11,13 +13,40 @@ interface SettingsProps {
   resetSystem: () => void;
   currentUser: User;
   updateUserPassword: (password: string) => void;
+  
+  // Setters for Import
+  setEmployees: (data: any[]) => void;
+  setAttendance: (data: any[]) => void;
+  setLeaves: (data: any[]) => void;
+  setLoans: (data: any[]) => void;
+  setReviews: (data: any[]) => void;
+  setBonuses: (data: any[]) => void;
+  setTaxDebts: (data: any[]) => void;
+  setExternalWorkers: (data: any[]) => void;
+  setPenalties: (data: Record<string, number>) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ departments, setDepartments, getAllData, restoreData, resetSystem, currentUser, updateUserPassword }) => {
+export const Settings: React.FC<SettingsProps> = ({ 
+    departments, setDepartments, getAllData, restoreData, resetSystem, currentUser, updateUserPassword,
+    setEmployees, setAttendance, setLeaves, setLoans, setReviews, setBonuses, setTaxDebts, setExternalWorkers, setPenalties
+}) => {
   const [newDept, setNewDept] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Import Refs
+  const importRefs: Record<string, React.RefObject<HTMLInputElement>> = {
+      employees: useRef(null),
+      attendance: useRef(null),
+      leaves: useRef(null),
+      loans: useRef(null),
+      bonuses: useRef(null),
+      tax_settlement: useRef(null),
+      external_workers: useRef(null),
+      reviews: useRef(null),
+      payroll: useRef(null)
+  };
 
   // Department Management
   const handleAddDept = (e: React.FormEvent) => {
@@ -51,7 +80,7 @@ export const Settings: React.FC<SettingsProps> = ({ departments, setDepartments,
       setConfirmPass('');
   };
 
-  // Backup & Restore
+  // Backup & Restore (JSON)
   const handleDownloadBackup = () => {
     const data = getAllData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -82,6 +111,120 @@ export const Settings: React.FC<SettingsProps> = ({ departments, setDepartments,
     }
   };
 
+  // Excel Exports (XLSX)
+  const handleExportExcel = (type: string) => {
+      const allData = getAllData();
+      const date = new Date().toISOString().split('T')[0];
+      
+      switch(type) {
+          case 'employees':
+              exportToExcel(allData.employees, `Employees_${date}`);
+              break;
+          case 'attendance':
+              exportToExcel(allData.attendance, `Attendance_${date}`);
+              break;
+          case 'leaves':
+              exportToExcel(allData.leaves, `Leaves_Missions_${date}`);
+              break;
+          case 'loans':
+              exportToExcel(allData.loans, `Loans_${date}`);
+              break;
+          case 'reviews':
+              exportToExcel(allData.reviews, `Performance_${date}`);
+              break;
+          case 'payroll':
+              // Calculate current month payroll for all employees
+              const payrollData = allData.employees.map((emp: any) => {
+                  return calculateSalary(
+                      emp,
+                      allData.loans,
+                      allData.reviews,
+                      allData.bonuses,
+                      0, // Incentives in calculator are transient, so 0 for static export
+                      allData.penalties[emp.id] || 0,
+                      0,
+                      allData.taxDebts
+                  );
+              });
+              exportToExcel(payrollData, `Payroll_Calculated_${date}`);
+              break;
+          case 'tax_settlement':
+              exportToExcel(allData.taxDebts, `Tax_Settlements_${date}`);
+              break;
+          case 'external_workers':
+              exportToExcel(allData.externalWorkers, `External_Workers_${date}`);
+              break;
+          case 'bonuses':
+              exportToExcel(allData.bonuses, `Bonuses_Grants_${date}`);
+              break;
+      }
+  };
+
+  // Excel Imports
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          try {
+              const parsedData = await parseExcel(file);
+              if (parsedData && parsedData.length > 0) {
+                  const confirmMsg = `تم قراءة ${parsedData.length} سجل من الملف.\nسيتم استبدال البيانات الحالية لهذه الفئة.\nهل أنت متأكد؟`;
+                  if (confirm(confirmMsg)) {
+                      switch (type) {
+                          case 'employees':
+                              // Special handling for Employee types (nested allowances often handled by parseExcel but double check booleans)
+                              const formattedEmps = parsedData.map((d: any) => ({
+                                  ...d,
+                                  hasExperience: d.hasExperience === true || d.hasExperience === 'true',
+                                  isSpecialNeeds: d.isSpecialNeeds === true || d.isSpecialNeeds === 'true'
+                              }));
+                              setEmployees(formattedEmps);
+                              break;
+                          case 'attendance':
+                              setAttendance(parsedData);
+                              break;
+                          case 'leaves':
+                              setLeaves(parsedData);
+                              break;
+                          case 'loans':
+                              setLoans(parsedData);
+                              break;
+                          case 'reviews':
+                              setReviews(parsedData);
+                              break;
+                          case 'bonuses':
+                              setBonuses(parsedData);
+                              break;
+                          case 'tax_settlement':
+                              setTaxDebts(parsedData);
+                              break;
+                          case 'external_workers':
+                              setExternalWorkers(parsedData);
+                              break;
+                          case 'payroll':
+                              const importedPenalties: Record<string, number> = {};
+                              parsedData.forEach((row: any) => {
+                                  if (row.employeeId && row.penalties) {
+                                      importedPenalties[row.employeeId] = Number(row.penalties);
+                                  }
+                              });
+                              // This will replace penalties for the found IDs
+                              setPenalties(importedPenalties);
+                              break;
+                      }
+                      alert('تم الاستيراد بنجاح!');
+                  }
+              } else {
+                  alert('الملف فارغ أو لا يحتوي على بيانات صالحة.');
+              }
+          } catch (error) {
+              console.error(error);
+              alert('خطأ في قراءة ملف Excel. تأكد من الصيغة.');
+          }
+          // Reset Input
+          if (e.target) e.target.value = '';
+      }
+  };
+
   const handleReset = () => {
       const confirmText = prompt('تحذير: هذا الإجراء سيقوم بمسح جميع البيانات والعودة لضبط المصنع. للتأكيد اكتب "حذف"');
       if (confirmText === 'حذف') {
@@ -89,6 +232,35 @@ export const Settings: React.FC<SettingsProps> = ({ departments, setDepartments,
           alert('تم إعادة ضبط النظام بنجاح.');
       }
   };
+
+  const DataControlRow = ({ label, type, exportType }: { label: string, type: string, exportType?: string }) => (
+      <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl hover:shadow-sm transition-shadow">
+          <span className="font-bold text-slate-700 text-sm">{label}</span>
+          <div className="flex gap-2">
+              <input 
+                  type="file" 
+                  ref={importRefs[type]} 
+                  accept=".xlsx, .xls" 
+                  onChange={(e) => handleImportExcel(e, type)} 
+                  className="hidden" 
+              />
+              <button 
+                  onClick={() => importRefs[type].current?.click()}
+                  className="flex items-center gap-1 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-100 border border-amber-200"
+                  title="استيراد من Excel"
+              >
+                  <Upload size={14} /> استيراد
+              </button>
+              <button 
+                  onClick={() => handleExportExcel(exportType || type)} 
+                  className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200"
+                  title="تصدير إلى Excel"
+              >
+                  <Download size={14} /> تصدير
+              </button>
+          </div>
+      </div>
+  );
 
   return (
     <div className="p-8 space-y-8 animate-fade-in">
@@ -171,42 +343,54 @@ export const Settings: React.FC<SettingsProps> = ({ departments, setDepartments,
         </div>
 
         {/* Data Management */}
-        <div className="bg-white rounded-xl shadow-sm border border-emerald-100 p-6">
-            <h3 className="text-xl font-bold text-emerald-900 mb-4 flex items-center gap-2">
-                <Save size={24} className="text-blue-600" />
-                النسخ الاحتياطي واستعادة البيانات
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Backup */}
-                <div className="border border-emerald-100 rounded-xl p-5 text-center hover:bg-emerald-50 transition-colors">
-                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Download size={24} />
-                    </div>
-                    <h4 className="font-bold text-slate-800 mb-2">تحميل نسخة احتياطية</h4>
-                    <p className="text-xs text-slate-500 mb-4">حفظ جميع بيانات الموظفين والحسابات في ملف على جهازك.</p>
-                    <button onClick={handleDownloadBackup} className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-700">تحميل الآن</button>
-                </div>
-
-                {/* Restore */}
-                <div className="border border-emerald-100 rounded-xl p-5 text-center hover:bg-emerald-50 transition-colors">
-                    <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Upload size={24} />
-                    </div>
-                    <h4 className="font-bold text-slate-800 mb-2">استعادة البيانات</h4>
-                    <p className="text-xs text-slate-500 mb-4">رفع ملف نسخة احتياطية لاسترجاع البيانات السابقة.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* JSON Backup */}
+            <div className="bg-white rounded-xl shadow-sm border border-emerald-100 p-6">
+                <h3 className="text-xl font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                    <Save size={24} className="text-blue-600" />
+                    النسخ الاحتياطي للنظام (JSON)
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">هذه النسخة تحتوي على كل تفاصيل النظام ويمكن استخدامها لاستعادة الحالة بالكامل.</p>
+                <div className="flex gap-4">
+                    <button onClick={handleDownloadBackup} className="flex-1 bg-blue-50 text-blue-700 py-3 rounded-lg font-bold text-sm hover:bg-blue-100 flex items-center justify-center gap-2">
+                        <Download size={18} /> تحميل نسخة
+                    </button>
                     <input type="file" ref={fileInputRef} accept=".json" onChange={handleUploadBackup} className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full bg-amber-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-amber-600">رفع ملف</button>
+                    <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-amber-50 text-amber-700 py-3 rounded-lg font-bold text-sm hover:bg-amber-100 flex items-center justify-center gap-2">
+                        <Upload size={18} /> استعادة نسخة
+                    </button>
                 </div>
+            </div>
 
-                {/* Reset */}
-                <div className="border border-red-100 rounded-xl p-5 text-center hover:bg-red-50 transition-colors">
-                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <RefreshCw size={24} />
-                    </div>
-                    <h4 className="font-bold text-slate-800 mb-2">ضبط المصنع</h4>
-                    <p className="text-xs text-slate-500 mb-4">مسح جميع البيانات والعودة للإعدادات الافتراضية.</p>
-                    <button onClick={handleReset} className="w-full bg-red-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-red-700">تهيئة النظام</button>
+            {/* Excel Import/Export */}
+            <div className="bg-white rounded-xl shadow-sm border border-emerald-100 p-6">
+                <h3 className="text-xl font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                    <FileSpreadsheet size={24} className="text-green-600" />
+                    بيانات Excel (تصدير / استيراد)
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">التحكم في البيانات عبر ملفات Excel (XLSX).</p>
+                <div className="grid grid-cols-1 gap-3">
+                    <DataControlRow label="بيانات الموظفين" type="employees" />
+                    <DataControlRow label="سجل الحضور" type="attendance" />
+                    <DataControlRow label="الإجازات والمأموريات" type="leaves" />
+                    <DataControlRow label="السلف" type="loans" />
+                    <DataControlRow label="المكافآت والمنح" type="bonuses" />
+                    <DataControlRow label="التسوية الضريبية" type="tax_settlement" />
+                    <DataControlRow label="عميل من الخارج" type="external_workers" />
+                    <DataControlRow label="المرتبات والأجور (الخصومات والجزاءات)" type="payroll" />
                 </div>
+            </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-red-50 rounded-xl shadow-sm border border-red-100 p-6">
+            <h3 className="text-xl font-bold text-red-800 mb-2 flex items-center gap-2">
+                <RefreshCw size={24} />
+                منطقة الخطر
+            </h3>
+            <div className="flex justify-between items-center">
+                <p className="text-sm text-red-600">مسح جميع البيانات والعودة للإعدادات الافتراضية.</p>
+                <button onClick={handleReset} className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-red-700">تهيئة النظام</button>
             </div>
         </div>
     </div>

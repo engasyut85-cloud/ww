@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, Clock, Calculator, LayoutDashboard, BrainCircuit, HardHat, Plane, Wallet, ClipboardCheck, BarChart3, Settings, LogOut, FileBadge, Gift, Shield, Scale, Briefcase } from 'lucide-react';
+import { Users, Clock, Calculator, LayoutDashboard, HardHat, Plane, Wallet, ClipboardCheck, BarChart3, Settings, LogOut, FileBadge, Gift, Shield, Scale, Briefcase, TrendingUp, Smartphone } from 'lucide-react';
 import { Page, User } from '../types';
 
 interface SidebarProps {
@@ -15,26 +15,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, setPage, currentUs
     { id: Page.DASHBOARD, label: 'لوحة التحكم', icon: <LayoutDashboard size={20} /> },
     { id: Page.EMPLOYEES, label: 'سجل الموظفين', icon: <Users size={20} /> },
     { id: Page.STATUS_STATEMENT, label: 'بيان حالة', icon: <FileBadge size={20} /> },
+    { id: Page.SALARY_PROGRESSION, label: 'تدرج أساسي العاملين', icon: <TrendingUp size={20} /> },
     { id: Page.ATTENDANCE, label: 'الحضور والانصراف', icon: <Clock size={20} /> },
     { id: Page.LEAVES, label: 'الإجازات والمأموريات', icon: <Plane size={20} /> },
-    { id: Page.LOANS, label: 'السلف والقروض', icon: <Wallet size={20} /> },
+    { id: Page.LOANS, label: 'السلف وفودافون', icon: <Wallet size={20} /> }, // Changed Label
     { id: Page.BONUSES, label: 'المكافآت والمنح', icon: <Gift size={20} /> },
     { id: Page.EXTERNAL_WORKERS, label: 'عميل من الخارج', icon: <Briefcase size={20} /> },
     { id: Page.PAYROLL, label: 'المرتبات والأجور', icon: <Calculator size={20} /> },
     { id: Page.TAX_SETTLEMENT, label: 'التسوية الضريبية', icon: <Scale size={20} /> },
     { id: Page.PERFORMANCE, label: 'تقييم الأداء', icon: <ClipboardCheck size={20} /> },
     { id: Page.REPORTS, label: 'مركز التقارير', icon: <BarChart3 size={20} /> },
-    { id: Page.AI_ADVISOR, label: 'المستشار القانوني', icon: <BrainCircuit size={20} /> },
   ];
 
   if (currentUser.role === 'admin') {
       menuItems.push({ id: Page.USERS, label: 'إدارة المستخدمين', icon: <Shield size={20} /> });
   }
 
-  // Filter items based on permissions if not admin
   const visibleItems = menuItems.filter(item => {
       if (currentUser.role === 'admin') return true;
-      // Check if permission exists in the array
       return currentUser.permissions?.includes(item.id);
   });
 

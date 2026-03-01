@@ -15,6 +15,7 @@ const PAGE_LABELS: Record<Page, string> = {
     [Page.EMPLOYEES]: 'سجل الموظفين',
     [Page.STATUS_STATEMENT]: 'بيان حالة',
     [Page.ATTENDANCE]: 'الحضور والانصراف',
+    [Page.SALARY_PROGRESSION]: 'تدرج أساسي العاملين', // Added
     [Page.LEAVES]: 'الإجازات والمأموريات',
     [Page.LOANS]: 'السلف والقروض',
     [Page.BONUSES]: 'المكافآت والمنح',
@@ -23,9 +24,10 @@ const PAGE_LABELS: Record<Page, string> = {
     [Page.TAX_SETTLEMENT]: 'التسوية الضريبية',
     [Page.PERFORMANCE]: 'تقييم الأداء',
     [Page.REPORTS]: 'مركز التقارير',
+    /* Added missing AI_ADVISOR label to resolve compilation error */
+    [Page.AI_ADVISOR]: 'المستشار القانوني',
     [Page.USERS]: 'إدارة المستخدمين',
-    [Page.SETTINGS]: 'الإعدادات',
-    [Page.AI_ADVISOR]: 'المستشار القانوني'
+    [Page.SETTINGS]: 'الإعدادات'
 };
 
 export const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, currentUser }) => {
@@ -96,7 +98,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers,
   };
 
   const toggleAllPermissions = () => {
-      const allPages = Object.values(Page).filter(p => p !== Page.USERS && p !== Page.SETTINGS); // Exclude admin pages from "Select All" helper
+      const allPages = Object.values(Page).filter(p => p !== Page.USERS && p !== Page.SETTINGS) as Page[]; // Exclude admin pages from "Select All" helper
       const currentPerms = formData.permissions || [];
       if (currentPerms.length >= allPages.length) {
           setFormData({ ...formData, permissions: [] });
@@ -209,7 +211,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers,
                                   <button type="button" onClick={toggleAllPermissions} className="text-xs text-blue-600 font-bold hover:underline">تحديد / إلغاء الكل</button>
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                  {Object.values(Page).filter(p => p !== Page.USERS && p !== Page.SETTINGS).map(page => (
+                                  {/* Fixed type error by casting Object.values to Page[] to fix 'unknown' type usage */}
+                                  {(Object.values(Page) as Page[]).filter(p => p !== Page.USERS && p !== Page.SETTINGS).map(page => (
                                       <div 
                                         key={page} 
                                         onClick={() => togglePermission(page)}

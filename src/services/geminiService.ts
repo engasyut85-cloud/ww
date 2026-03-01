@@ -1,25 +1,15 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const getClient = () => {
-    // Access environment variable directly as per guidelines
-    // process.env is defined in vite.config.ts
-    const apiKey = process.env.API_KEY; 
-    
-    if (!apiKey) {
-        console.warn("API Key not found in environment variables");
-        return null;
-    }
-    return new GoogleGenAI({ apiKey });
-};
-
+// Use direct environment variable access for API key as per guidelines
 export const askLaborLawAdvisor = async (question: string): Promise<string> => {
-    const ai = getClient();
-    if (!ai) return "خطأ: مفتاح API غير موجود. يرجى التأكد من الإعدادات.";
+    // Initialize GoogleGenAI right before the call with named parameter
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            // Upgrade to gemini-3-flash-preview for basic reasoning and text tasks
+            model: "gemini-3-flash-preview",
             contents: question,
             config: {
                 systemInstruction: `
@@ -32,6 +22,7 @@ export const askLaborLawAdvisor = async (question: string): Promise<string> => {
                 temperature: 0.7
             }
         });
+        // Correct usage of .text property (not a method)
         return response.text || "لم يتم استلام رد من النظام.";
     } catch (error) {
         console.error("Gemini API Error:", error);
